@@ -10,20 +10,15 @@ expected_address = "bc1pmmkr7j7shetj4gd8vwhdps83xz7ktv7mtdw976tkltqa28nrzt4q8wdm
 wordlist_path = "wordlists/wordlist.txt"
 
 # Number of threads to be used for generation
-num_threads = 4
+num_threads = 7
 
-# Template for the passphrase with placeholders
-passphrase = "'upp1'QusLt3mzPDPn'dig1'QQ"
+# Regex pattern for passphrase generation
+# Examples:
+# - [A-Z][0-9]{2} - Uppercase letter followed by two digits
+# - Q[a-z]{3}[0-9] - Letter Q followed by three lowercase letters and one digit
+# - [A-Z]us[A-Z]t[0-9]mz[A-Z]{2}[0-9]{2}QQ - Complex pattern
+passphrase = "[0-9]{4,6}"
 
-# Characters to be used for the placeholders
-upp1 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"  # Uppercase letters ABCDEFGHIJKLMNOPQRSTUVWXYZ
-upp2 = "DEF"  # Uppercase letters ABCDEFGHIJKLMNOPQRSTUVWXYZ
-low1 = "abc"  # Lowercase letters abcdefghijklmnopqrstuvwxyz
-low2 = "abc"  # Lowercase letters abcdefghijklmnopqrstuvwxyz
-dig1 = "0123456789"  # Digits 0123456789
-dig2 = "789"  # Digits 0123456789
-spe1 = "!§$"  # Special characters +*#'<>^°!§$%&=?
-spe2 = "!§$"  # Special characters +*#'<>^°!§$%&=?
 
 # Number of address paths to search (1, 2, or 3)
-address_paths_to_search = 3
+address_paths_to_search = 1
