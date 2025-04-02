@@ -51,6 +51,24 @@ impl RegexExpander {
 
     fn expand_hir(&self, hir: &Hir, current: String, results: &mut Vec<String>) -> Result<(), RegexError> {
         match hir.kind() {
+            HirKind::Concat(nodes) => {
+                let mut temp_results = vec![current];
+                for node in nodes {
+                    let mut new_results = Vec::new();
+                    for prefix in temp_results {
+                        self.expand_hir(node, prefix, &mut new_results)?;
+                    }
+                    temp_results = new_results;
+                }
+                results.extend(temp_results);
+                Ok(())
+            }
+            HirKind::Alternation(alts) => {
+                for alt in alts {
+                    self.expand_hir(alt, current.clone(), results)?;
+                }
+                Ok(())
+            }
             HirKind::Literal(lit) => {
                 results.push(current + &String::from_utf8_lossy(&lit.0));
                 Ok(())
@@ -109,22 +127,9 @@ impl RegexExpander {
                 results.extend(final_results);
                 Ok(())
             }
-            HirKind::Concat(nodes) => {
-                results.push(current);
-                for node in nodes {
-                    let mut new_results = Vec::new();
-                    for base in results.drain(..) {
-                        self.expand_hir(node, base, &mut new_results)?;
-                    }
-                    results.extend(new_results);
-                }
-                Ok(())
-            }
-            HirKind::Alternation(nodes) => {
-                for node in nodes {
-                    self.expand_hir(node, current.clone(), results)?;
-                }
-                Ok(())
+            HirKind::Capture(capture) => {
+                // Just process the inner pattern for captures
+                self.expand_hir(&capture.sub, current, results)
             }
             _ => Err(RegexError::UnsupportedPattern(format!(
                 "Unsupported regex feature: {:?}",

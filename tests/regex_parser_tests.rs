@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::regex_parser::RegexExpander;
+    use rust_btc_passphrase_finder::regex_parser::RegexExpander;
 
     #[test]
     fn test_simple_character_class() {
@@ -42,6 +42,6 @@ mod tests {
     fn test_too_many_combinations() {
         let expander = RegexExpander::new(10);
         let result = expander.expand_pattern("[0-9]{2}").unwrap_err();
-        assert!(matches!(result, crate::regex_parser::RegexError::TooManyPossibilities));
+        assert!(matches!(result, rust_btc_passphrase_finder::regex_parser::RegexError::TooManyPossibilities));
     }
 }
