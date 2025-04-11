@@ -55,7 +55,39 @@ fn save_words_chunk(words: &[String], dir_path: &str, file_number: usize) -> io:
 /// 
 /// # Returns
 /// * `Result<(), Box<dyn std::error::Error>>` - Success or error
+/// Removes all existing wordlist files from the target directory
+/// 
+/// # Arguments
+/// * `dir_path` - Path to the directory containing wordlist files
+/// 
+/// # Returns
+/// * `io::Result<()>` - Success or IO error
+fn cleanup_existing_wordlists(dir_path: &str) -> io::Result<()> {
+    // Create directory if it doesn't exist
+    fs::create_dir_all(dir_path)?;
+    
+    // Read directory entries
+    for entry in fs::read_dir(dir_path)? {
+        let entry = entry?;
+        let path = entry.path();
+        
+        // Check if the file is a wordlist file
+        if path.is_file() && 
+           path.file_name()
+               .and_then(|n| n.to_str())
+               .map(|n| n.starts_with("wordlist_") && n.ends_with(".txt"))
+               .unwrap_or(false) {
+            fs::remove_file(path)?;
+        }
+    }
+    Ok(())
+}
+
 pub fn generate_and_save_passphrases(config: &Arc<Config>) -> Result<(), Box<dyn std::error::Error>> {
+    // Clean up existing wordlist files
+    println!("Cleaning up existing wordlist files...");
+    cleanup_existing_wordlists(&config.wordlist_path)?;
+    
     println!("Generating passphrases using regex pattern: {}", config.passphrase);
     let words = generate_words(&config.passphrase)?;
     println!("Generated {} possible passphrases", words.len());
@@ -126,5 +158,36 @@ mod tests {
 
         assert!(!entries.is_empty());
         assert!(entries.iter().all(|name| name.starts_with("wordlist_") && name.ends_with(".txt")));
+    }
+
+    #[test]
+    fn test_cleanup_existing_wordlists() {
+        let temp_dir = tempdir().unwrap();
+        let dir_path = temp_dir.path().to_str().unwrap();
+
+        // Create some test files
+        let test_files = vec![
+            "wordlist_0001.txt",
+            "wordlist_0002.txt",
+            "other_file.txt", // This file should not be deleted
+        ];
+
+        for file in &test_files {
+            let path = PathBuf::from(dir_path).join(file);
+            File::create(&path).unwrap();
+        }
+
+        // Run cleanup
+        cleanup_existing_wordlists(dir_path).unwrap();
+
+        // Check remaining files
+        let entries: Vec<_> = fs::read_dir(dir_path)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().to_string())
+            .collect();
+
+        // Only other_file.txt should remain
+        assert_eq!(entries.len(), 1);
+        assert!(entries.contains(&"other_file.txt".to_string()));
     }
 }
