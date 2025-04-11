@@ -13,6 +13,7 @@ use crate::config::Config;
 use rust_btc_passphrase_finder::wordlist;
 use std::io::{self, ErrorKind};
 use std::sync::atomic::{AtomicBool, Ordering};
+use num_cpus;
 
 /// Find a passphrase that generates the target master fingerprint
 /// 
@@ -48,7 +49,7 @@ pub fn find_passphrase_by_fingerprint(config: &Arc<Config>) -> Result<(), Box<dy
         .template("[{bar:40.green/white}] {pos}/{len} files processed ({eta})")
         .progress_chars("█=>-"));
     
-    // Create a multi-progress bar for tracking all files (not used directly)
+    // Create a dummy multi-progress bar for compatibility with the function signature
     let multi_progress = MultiProgress::new();
 
     // Flag to check if passphrase is found
@@ -101,7 +102,7 @@ fn process_wordlist_by_fingerprint(
     file_path: &std::path::Path,
     config: &Arc<Config>,
     passphrase_found: &Arc<AtomicBool>,
-    _multi_progress: &MultiProgress,
+    _multi_progress: &MultiProgress, // Unused parameter kept for API compatibility
 ) -> io::Result<()> {
     let file = match File::open(file_path) {
         Ok(f) => f,
@@ -133,26 +134,34 @@ fn process_wordlist_by_fingerprint(
         .progress_chars("█=>-"));
     pb.enable_steady_tick(100);
 
-    // Create a custom thread pool
-    let pool = ThreadPoolBuilder::new().num_threads(config.num_threads).build()
+    // Create a custom thread pool with optimal thread count
+    let num_threads = std::cmp::max(config.num_threads, num_cpus::get());
+    let pool = ThreadPoolBuilder::new().num_threads(num_threads).build()
         .map_err(|e| io::Error::new(ErrorKind::Other, e))?;
 
+    // Pre-create the expected fingerprint for comparison
+    let expected_fingerprint = config.expected_masterfingerprint.to_lowercase();
+    
     // Perform parallel processing within the custom thread pool
     pool.install(|| {
         lines.par_iter().for_each(|&passphrase| {
             if !passphrase_found.load(Ordering::Relaxed) {
+                // Create these per thread but not per passphrase
                 let mnemonic = Mnemonic::parse_in(Language::English, &config.seed_phrase)
                     .expect("Failed to create mnemonic");
-                let seed = mnemonic.to_seed(passphrase);
                 let secp = Secp256k1::new();
-                let root_key = ExtendedPrivKey::new_master(Network::Bitcoin, &seed)
-                    .expect("Failed to create root key");
+                
+                let seed = mnemonic.to_seed(passphrase);
+                let root_key = match ExtendedPrivKey::new_master(Network::Bitcoin, &seed) {
+                    Ok(key) => key,
+                    Err(_) => return,
+                };
                 
                 // Get master fingerprint (4 bytes) and convert to hex string
                 let fingerprint = root_key.fingerprint(&secp);
                 let fingerprint_hex = format!("{:08x}", fingerprint);
                 
-                if fingerprint_hex == config.expected_masterfingerprint.to_lowercase() {
+                if fingerprint_hex == expected_fingerprint {
                     // Clear progress bar before printing the success message
                     pb.finish_and_clear();
                     
