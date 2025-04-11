@@ -1,21 +1,22 @@
-use bitcoin_v028::secp256k1::{Secp256k1, PublicKey};
-use bitcoin_v028::util::bip32::{ExtendedPrivKey, DerivationPath};
-use bitcoin_v028::network::constants::Network;
-use bitcoin_v028::util::address::Address;
-use bitcoin_v028::util::taproot::TaprootBuilder;
-use bitcoin_v028::XOnlyPublicKey;
+use bitcoin::secp256k1::{Secp256k1, PublicKey};
+use bitcoin::util::bip32::{ExtendedPrivKey, DerivationPath};
+use bitcoin::network::constants::Network;
+use bitcoin::util::address::Address;
+use bitcoin::util::taproot::TaprootBuilder;
+use bitcoin::XOnlyPublicKey;
 use bip39::{Mnemonic, Language};
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
 use std::sync::Arc;
 use std::fs::File;
+use std::path::Path;
 use log::{warn};
 use memmap::Mmap;
 use crate::config::Config;
 use std::io::{self, ErrorKind};
 
-fn derive_taproot_key(master_key: &ExtendedPrivKey, index: u32) -> Result<XOnlyPublicKey, bitcoin_v028::util::bip32::Error> {
+fn derive_taproot_key(master_key: &ExtendedPrivKey, index: u32) -> Result<XOnlyPublicKey, bitcoin::util::bip32::Error> {
     let secp = Secp256k1::new();
     let path: DerivationPath = format!("m/86'/0'/0'/0/{}", index).parse()?;
     let derived_key = master_key.derive_priv(&secp, &path)?;
@@ -24,10 +25,46 @@ fn derive_taproot_key(master_key: &ExtendedPrivKey, index: u32) -> Result<XOnlyP
 }
 
 pub fn find_taproot_passphrase(config: &Arc<Config>) -> Result<(), Box<dyn std::error::Error>> {
-    // Open and memory-map the wordlist
-    let file = File::open(&config.wordlist_path)?;
+    println!("Starting find_taproot_passphrase function");
+    println!("Config wordlist_path: {}", &config.wordlist_path);
+    
+    // Ensure the wordlist_path is a directory
+    let path = Path::new(&config.wordlist_path);
+    if !path.exists() {
+        return Err(format!("Wordlist directory '{}' does not exist", &config.wordlist_path).into());
+    }
+    if !path.is_dir() {
+        return Err(format!("Wordlist path '{}' is not a directory", &config.wordlist_path).into());
+    }
+    
+    // Get list of wordlist files
+    println!("Looking for wordlist files in: {}", &config.wordlist_path);
+    let wordlist_files = match rust_btc_passphrase_finder::wordlist::get_wordlist_files(&config.wordlist_path) {
+        Ok(files) => {
+            println!("Found {} wordlist files", files.len());
+            files
+        },
+        Err(e) => {
+            println!("Error getting wordlist files: {}", e);
+            return Err(e.into());
+        }
+    };
+    if wordlist_files.is_empty() {
+        return Err("No wordlist files found. Run 'Generate Passphrases' first.".into());
+    }
+    
+    println!("Found {} wordlist files to process", wordlist_files.len());
+    
+    // Process the first wordlist file for now
+    // In a real implementation, you would process all files
+    let file_path = &wordlist_files[0];
+    println!("Processing file: {}", file_path.display());
+    
+    // Open and memory-map the wordlist file
+    let file = File::open(file_path)?;
     let mmap = unsafe { Mmap::map(&file)? };
     let lines: Vec<&str> = mmap.split(|&byte| byte == b'\n')
+        .filter(|line| !line.is_empty())
         .map(|line| std::str::from_utf8(line).map_err(|_| io::Error::new(ErrorKind::InvalidData, "Invalid UTF-8")))
         .collect::<Result<Vec<&str>, io::Error>>()?;
 
