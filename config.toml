@@ -4,7 +4,7 @@
 seed_phrase = "anger science wool gown ocean eagle sadness action smooth series goose elder"
 
 # Expected Bitcoin address that should match the generated passphrase
-expected_address = "bc1pmmkr7j7shetj4gd8vwhdps83xz7ktv7mtdw976tkltqa28nrzt4q8wdmcq"
+expected_address = "bc1qy75w3zm24vjmrdue78jf5t9t3r0p52nu049vm9"
 expected_masterfingerprint = "88ff8206"
 
 # Path to the directory where the generated wordlist files will be saved

@@ -213,6 +213,92 @@ pub fn find_passphrase(config: &Arc<Config>) -> Result<(), Box<dyn std::error::E
     // Determine the address format
     let address_format = get_address_format(&config.expected_address);
     println!("Address format: {}", address_format);
+    
+    // First check if the seed phrase without any passphrase matches the expected address
+    let mnemonic = Mnemonic::parse_in(Language::English, &config.seed_phrase)
+        .expect("Failed to create mnemonic");
+    let seed = mnemonic.to_seed(""); // Empty passphrase
+    let secp = Secp256k1::new();
+    let root_key = ExtendedPrivKey::new_master(Network::Bitcoin, &seed)
+        .expect("Failed to create root key");
+    
+    // Define the derivation paths
+    let derivation_paths: Vec<DerivationPath> = match address_format {
+        "legacy" => (0..config.address_paths_to_search)
+            .map(|i| DerivationPath::from_str(&format!("m/44'/0'/0'/0/{}", i))
+                .expect("Failed to create derivation path"))
+            .collect(),
+        "p2sh" => (0..config.address_paths_to_search)
+            .map(|i| DerivationPath::from_str(&format!("m/49'/0'/0'/0/{}", i))
+                .expect("Failed to create derivation path"))
+            .collect(),
+        "segwit" => (0..config.address_paths_to_search)
+            .map(|i| DerivationPath::from_str(&format!("m/84'/0'/0'/0/{}", i))
+                .expect("Failed to create derivation path"))
+            .collect(),
+        "p2wsh" => (0..config.address_paths_to_search)
+            .map(|i| DerivationPath::from_str(&format!("m/48'/0'/0'/2/{}", i))
+                .expect("Failed to create derivation path"))
+            .collect(),
+        _ => panic!("Unsupported address format: {}", address_format),
+    };
+    
+    // Check each derivation path
+    for path in derivation_paths {
+        let derived_key = root_key.derive_priv(&secp, &path)
+            .expect("Failed to derive private key");
+        
+        // Generate the address based on the format
+        let address = match address_format {
+            "legacy" => {
+                let pubkey = bitcoin::PublicKey {
+                    compressed: true,
+                    inner: bitcoin::secp256k1::PublicKey::from_secret_key(&secp, &derived_key.private_key),
+                };
+                Address::p2pkh(&pubkey, Network::Bitcoin)
+            },
+            "p2sh" => {
+                let pubkey = bitcoin::PublicKey {
+                    compressed: true,
+                    inner: bitcoin::secp256k1::PublicKey::from_secret_key(&secp, &derived_key.private_key),
+                };
+                Address::p2shwpkh(&pubkey, Network::Bitcoin)
+                    .expect("Failed to create P2SH address")
+            },
+            "segwit" => {
+                let pubkey = bitcoin::PublicKey {
+                    compressed: true,
+                    inner: bitcoin::secp256k1::PublicKey::from_secret_key(&secp, &derived_key.private_key),
+                };
+                Address::p2wpkh(&pubkey, Network::Bitcoin)
+                    .expect("Failed to create SegWit address")
+            },
+            "p2wsh" => {
+                let pubkey = bitcoin::PublicKey {
+                    compressed: true,
+                    inner: bitcoin::secp256k1::PublicKey::from_secret_key(&secp, &derived_key.private_key),
+                };
+                let wpkh = pubkey.wpubkey_hash().expect("Failed to create WPubkeyHash");
+                let script = Script::new_v0_p2wpkh(&wpkh);
+                Address::p2wsh(&script, Network::Bitcoin)
+            },
+            _ => panic!("Unsupported address format: {}", address_format),
+        };
+        
+        if address.to_string() == config.expected_address {
+            println!("\n===============================");
+            println!("🎉 MATCH FOUND WITH EMPTY PASSPHRASE! 🎉");
+            println!("===============================");
+            println!("🔑 No additional passphrase needed");
+            println!("🔍 Address: {}", address);
+            println!("🔍 Path: {}", path);
+            println!("===============================");
+            return Ok(());
+        }
+    }
+    
+    println!("Empty passphrase check: No match");
+    println!("Searching for passphrase...");
 
     // Get list of wordlist files
     println!("Looking for wordlist files in: {}", &config.wordlist_path);

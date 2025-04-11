@@ -28,6 +28,38 @@ pub fn find_taproot_passphrase(config: &Arc<Config>) -> Result<(), Box<dyn std::
     println!("Starting find_taproot_passphrase function");
     println!("Config wordlist_path: {}", &config.wordlist_path);
     
+    // First check if the seed phrase without any passphrase matches the expected taproot address
+    let mnemonic = Mnemonic::parse_in(Language::English, &config.seed_phrase)
+        .expect("Failed to create mnemonic");
+    let seed = mnemonic.to_seed(""); // Empty passphrase
+    let secp = Secp256k1::new();
+    let root_key = ExtendedPrivKey::new_master(Network::Bitcoin, &seed)
+        .expect("Failed to create root key");
+    
+    // Check each derivation path
+    for i in 0..config.address_paths_to_search {
+        let xonly_pubkey = derive_taproot_key(&root_key, i as u32)
+            .expect("Failed to derive taproot key");
+        let taproot_output_key = TaprootBuilder::new()
+            .finalize(&secp, xonly_pubkey)
+            .expect("Failed to finalize taproot builder");
+        let taproot_address = Address::p2tr_tweaked(taproot_output_key.output_key(), Network::Bitcoin);
+        
+        if taproot_address.to_string() == config.expected_address {
+            println!("\n===============================");
+            println!("🎉 MATCH FOUND WITH EMPTY PASSPHRASE! 🎉");
+            println!("===============================");
+            println!("🔑 No additional passphrase needed");
+            println!("🔍 Address: {}", taproot_address);
+            println!("🔍 Path index: {}", i);
+            println!("===============================");
+            return Ok(());
+        }
+    }
+    
+    println!("Empty passphrase check: No match");
+    println!("Searching for passphrase...");
+    
     // Ensure the wordlist_path is a directory
     let path = Path::new(&config.wordlist_path);
     if !path.exists() {

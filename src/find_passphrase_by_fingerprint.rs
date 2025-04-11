@@ -29,6 +29,29 @@ pub fn find_passphrase_by_fingerprint(config: &Arc<Config>) -> Result<(), Box<dy
     println!("Starting find_passphrase function (by master fingerprint)");
     println!("Expected master fingerprint: {}", &config.expected_masterfingerprint);
     
+    // First check if the seed phrase without any passphrase matches the expected fingerprint
+    let mnemonic = Mnemonic::parse_in(Language::English, &config.seed_phrase)
+        .expect("Failed to create mnemonic");
+    let seed = mnemonic.to_seed(""); // Empty passphrase
+    let secp = Secp256k1::new();
+    let root_key = ExtendedPrivKey::new_master(Network::Bitcoin, &seed)
+        .expect("Failed to create root key");
+    let fingerprint = root_key.fingerprint(&secp);
+    let fingerprint_hex = format!("{:08x}", fingerprint);
+    
+    if fingerprint_hex == config.expected_masterfingerprint.to_lowercase() {
+        println!("\n===============================");
+        println!("🎉 MATCH FOUND WITH EMPTY PASSPHRASE! 🎉");
+        println!("===============================");
+        println!("🔑 No additional passphrase needed");
+        println!("🔍 Master fingerprint: {}", fingerprint_hex);
+        println!("===============================");
+        return Ok(());
+    } else {
+        println!("Empty passphrase check: No match (fingerprint: {})", fingerprint_hex);
+        println!("Searching for passphrase...");
+    }
+    
     // Get list of wordlist files
     let wordlist_files = match wordlist::get_wordlist_files(&config.wordlist_path) {
         Ok(files) => files,
