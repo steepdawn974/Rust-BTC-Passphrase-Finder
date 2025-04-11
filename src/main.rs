@@ -5,6 +5,7 @@ mod config;
 mod passphrase_generater;
 mod regex_parser;
 mod find_passphrase_by_fingerprint;
+mod state;
 
 use find_passphrase::find_passphrase;
 use generate_address::generate_all_addresses;
