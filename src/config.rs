@@ -7,7 +7,7 @@ pub struct Config {
     pub seed_phrase: String,
     /// Expected Bitcoin address that should match the generated passphrase
     pub expected_address: String,
-    /// Path to the file where the generated passphrases will be saved
+    /// Path to the directory where the generated wordlist files will be saved
     pub wordlist_path: String,
     /// Number of threads to be used for generation
     pub num_threads: usize,
