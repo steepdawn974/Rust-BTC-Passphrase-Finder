@@ -4,10 +4,11 @@
 seed_phrase = "anger science wool gown ocean eagle sadness action smooth series goose elder"
 
 # Expected Bitcoin address that should match the generated passphrase
-expected_address = "bc1pmmkr7j7shetj4gd8vwhdps83xz7ktv7mtdw976tkltqa28nrzt4q8wdmcq"
+expected_address = "bc1qckqpdax6ys5lf9r84rhkl283xjjemgwl94r7aq" # for no passhphrase: "bc1qy75w3zm24vjmrdue78jf5t9t3r0p52nu049vm9"
+expected_masterfingerprint = "60008b2f" #passphrase:9999  # for no passphrase: "88ff8206"
 
-# Path to the file where the generated passphrases will be saved
-wordlist_path = "wordlists/wordlist.txt"
+# Path to the directory where the generated wordlist files will be saved
+wordlist_path = "wordlists"
 
 # Number of threads to be used for generation
 num_threads = 7

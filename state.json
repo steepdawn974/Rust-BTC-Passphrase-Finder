@@ -1,0 +1,19 @@
+{
+  "wordlist_files": {
+    "/home/ingo/code/Rust-BTC-Passphrase-Finder/wordlists/wordlist_0001.txt": {
+      "path": "/home/ingo/code/Rust-BTC-Passphrase-Finder/wordlists/wordlist_0001.txt",
+      "hash": "4173de42bf5c21347d233e75dfae2c494aca876a51cf7a6c073d85ad6453c858",
+      "last_processed": 1744387082,
+      "status": "Processed"
+    },
+    "/home/ingo/code/Rust-BTC-Passphrase-Finder/wordlists/wordlist_0002.txt": {
+      "path": "/home/ingo/code/Rust-BTC-Passphrase-Finder/wordlists/wordlist_0002.txt",
+      "hash": "0701d17413b9c43571bcd7037e566f066ee39417cd4077d00bcb11b445ffcd0d",
+      "last_processed": 1744387082,
+      "status": "MatchFound"
+    }
+  },
+  "last_updated": 1744387082,
+  "target": "bc1qckqpdax6ys5lf9r84rhkl283xjjemgwl94r7aq",
+  "found_passphrase": "9999"
+}

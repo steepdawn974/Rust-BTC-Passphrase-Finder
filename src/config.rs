@@ -1,13 +1,15 @@
 use serde::Deserialize;
 
 /// Configuration structure for the Bitcoin Passphrase Finder
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct Config {
     /// Seed phrase used for generating the passphrase
     pub seed_phrase: String,
     /// Expected Bitcoin address that should match the generated passphrase
     pub expected_address: String,
-    /// Path to the file where the generated passphrases will be saved
+    /// Expected master fingerprint
+    pub expected_masterfingerprint: String,
+    /// Path to the directory where the generated wordlist files will be saved
     pub wordlist_path: String,
     /// Number of threads to be used for generation
     pub num_threads: usize,
